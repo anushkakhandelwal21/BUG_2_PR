@@ -1,0 +1,60 @@
+{
+  "run_id": "b5c6d7e8-9999-4444-aaaa-bbbbccccdddd",
+  "issue_url": "https://github.com/Trident1211/Demo-buggy-repo/issues/5",
+  "status": "SUCCESS",
+  "pr_url": "https://github.com/Trident1211/Demo-buggy-repo/pull/6",
+  "duration_seconds": 15.2,
+  "fix_tries": 1,
+  "timestamp": "2026-10-24T19:40:00.000000+00:00",
+  "events": [],
+  "final_state": {
+    "issue_url": "https://github.com/Trident1211/Demo-buggy-repo/issues/5",
+    "issue_title": "Fix session token expiration calculation off by 60 seconds",
+    "issue_body": "Token expiry timestamp computed using milliseconds instead of seconds offset in auth helper.",
+    "repo_path": "repos/Demo-buggy-repo",
+    "file_tree": "api/\n  auth.py\ntests/\n  test_auth.py",
+    "triage_result": {
+      "summary": "Fix token expiration arithmetic in auth helper",
+      "affected_files": ["api/auth.py"],
+      "affected_symbols": [
+        {"file": "api/auth.py", "symbol": "create_expiry_timestamp", "reason": "Uses seconds directly"}
+      ]
+    },
+    "source_snippets": {
+      "api/auth.py": "def create_expiry_timestamp(now: int, ttl_minutes: int) -> int:\n    return now + ttl_minutes * 60\n"
+    },
+    "reproducer_result": {
+      "test_file_path": "tests/test_auth.py",
+      "test_function": "test_expiry_timestamp_precision",
+      "test_code": "def test_expiry_timestamp_precision():\n    from api.auth import create_expiry_timestamp\n    assert create_expiry_timestamp(1000, 5) == 1300\n",
+      "expected_failure_reason": "AssertionError"
+    },
+    "repro_sandbox_output": {
+      "stdout": "tests/test_auth.py F\nAssertionError: assert 1000 + 300 == 1300\n1 failed in 0.04s",
+      "stderr": "",
+      "returncode": 1
+    },
+    "fixer_result": {
+      "patch": "--- a/api/auth.py\n+++ b/api/auth.py\n@@ -1,2 +1,2 @@\n def create_expiry_timestamp(now: int, ttl_minutes: int) -> int:\n-    return now + (ttl_minutes - 1) * 60\n+    return now + ttl_minutes * 60\n",
+      "files_changed": ["api/auth.py"],
+      "explanation": "Removed faulty minus one adjustment in `create_expiry_timestamp`."
+    },
+    "verifier_result": {
+      "reproduction_test_passed": true,
+      "full_suite_passed": true,
+      "total_tests": 8,
+      "passed": 8,
+      "failed": 0,
+      "errors": 0,
+      "failed_tests": [],
+      "regression_introduced": false,
+      "feedback_for_fixer": "",
+      "confidence": 1.0
+    },
+    "retry_count": 0,
+    "retry_history": [],
+    "pipeline_status": "SUCCESS",
+    "error_message": "",
+    "pr_url": "https://github.com/Trident1211/Demo-buggy-repo/pull/6"
+  }
+}

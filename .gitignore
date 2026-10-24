@@ -1,3 +1,8 @@
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+
 # Environment
 .env
 
@@ -17,9 +22,6 @@ htmlcov/
 .venv/
 venv/
 env/
-
-# Run records (generated)
-runs/
 
 # Cloned repos (generated)
 repos/

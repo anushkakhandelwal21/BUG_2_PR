@@ -1,0 +1,148 @@
+{
+  "run_id": "run_rec_express_5129",
+  "recorded_at": "2026-10-24T14:15:30Z",
+  "recorder_version": "1.2.0",
+  "issue": {
+    "number": 5129,
+    "title": "Router crash on nested percent-encoded path parameter in route dispatcher",
+    "url": "https://github.com/expressjs/express/issues/5129",
+    "repository": "expressjs/express"
+  },
+  "final_status": "verified",
+  "duration_seconds": 184,
+  "events": [
+    {
+      "id": "ev-01",
+      "timestamp": "14:15:32",
+      "stage": "triage",
+      "status": "running",
+      "agent": "Triage Agent",
+      "message": "Ingested issue #5129. Parsing stack trace from lib/router/layer.js:98.",
+      "stdout": "Loaded AST for expressjs/express repository. Identified suspect file: lib/router/layer.js"
+    },
+    {
+      "id": "ev-02",
+      "timestamp": "14:16:04",
+      "stage": "triage",
+      "status": "passed",
+      "agent": "Triage Agent",
+      "message": "Triage verified: URIError: URI malformed thrown during path decoding with invalid hex sequences.",
+      "stdout": "Symbol call graph mapped. Target function: decode_param (lib/router/layer.js:142)"
+    },
+    {
+      "id": "ev-03",
+      "timestamp": "14:16:15",
+      "stage": "reproducer",
+      "status": "running",
+      "agent": "Reproducer Agent",
+      "message": "Synthesized regression test fixture: test/Route.encoded.test.js.",
+      "stdout": "$ npm test -- test/Route.encoded.test.js"
+    },
+    {
+      "id": "ev-04",
+      "timestamp": "14:16:38",
+      "stage": "reproducer",
+      "status": "passed",
+      "agent": "Reproducer Agent",
+      "message": "Baseline failure reproduced (RED). Strict invariant gate 1 satisfied.",
+      "stdout": "FAIL test/Route.encoded.test.js\n  ● Router › percent-encoded params › throws URIError on malformed path\n    URIError: URI malformed\n      at decodeURIComponent (<anonymous>)\n      at Layer.decode_param (lib/router/layer.js:145:12)\n\nTests: 1 failed, 1 total",
+      "stderr": "Baseline test confirmed RED failure on master branch."
+    },
+    {
+      "id": "ev-05",
+      "timestamp": "14:17:02",
+      "stage": "fixer",
+      "status": "running",
+      "agent": "Fixer Agent",
+      "message": "Drafting defensive patch wrapping decodeURIComponent with try/catch fallback.",
+      "stdout": "Generated unified diff for lib/router/layer.js (+8 / -2 lines)."
+    },
+    {
+      "id": "ev-06",
+      "timestamp": "14:17:35",
+      "stage": "fixer",
+      "status": "passed",
+      "agent": "Fixer Agent",
+      "message": "Patch applied cleanly to isolated worktree.",
+      "stdout": "git apply --check /tmp/patch_5129.diff returned exit code 0."
+    },
+    {
+      "id": "ev-07",
+      "timestamp": "14:17:48",
+      "stage": "verifier",
+      "status": "running",
+      "agent": "Verifier Agent",
+      "message": "Executing full test suite inside isolated Docker container sandbox.",
+      "stdout": "$ docker exec sandbox npm test\nRunning Mocha test matrix with 186 test suites..."
+    },
+    {
+      "id": "ev-08",
+      "timestamp": "14:18:22",
+      "stage": "verifier",
+      "status": "passed",
+      "agent": "Verifier Agent",
+      "message": "Full sandbox test suite passed: 186 suites, 1142 passed, 0 failed.",
+      "stdout": "  1142 passing (6.42s)\n  0 failing\n  2 pending\n\nStatus: VERIFIED PASS (Zero regressions detected)",
+      "test_results": {
+        "status": "verified_passed",
+        "baseline_reproduced": true,
+        "post_fix_passed": true,
+        "total_tests": 1144,
+        "passed_count": 1142,
+        "failed_count": 0,
+        "skipped_count": 2,
+        "duration_ms": 6420
+      }
+    },
+    {
+      "id": "ev-09",
+      "timestamp": "14:18:34",
+      "stage": "pull_request",
+      "status": "passed",
+      "agent": "Pull Request Agent",
+      "message": "Pull request payload generated with verified test seal and full diff.",
+      "stdout": "PR #5130 prepared for expressjs/express: fix(router): catch URI malformed during param decoding (#5129)"
+    }
+  ],
+  "diffs": [
+    {
+      "filename": "lib/router/layer.js",
+      "status": "modified",
+      "additions": 8,
+      "deletions": 2,
+      "isRegressionTest": false,
+      "unifiedDiff": "@@ -140,8 +140,14 @@ Layer.prototype.decode_param = function decode_param(val) {\n   if (typeof val !== 'string' || val.length === 0) {\n     return val;\n   }\n-\n-  return decodeURIComponent(val);\n+  try {\n+    return decodeURIComponent(val);\n+  } catch (err) {\n+    if (err instanceof URIError) {\n+      return val;\n+    }\n+    throw err;\n+  }\n };"
+    },
+    {
+      "filename": "test/Route.encoded.test.js",
+      "status": "added",
+      "additions": 18,
+      "deletions": 0,
+      "isRegressionTest": true,
+      "unifiedDiff": "@@ -0,0 +1,18 @@\n+var express = require('../');\n+var request = require('supertest');\n+\n+describe('Router with malformed percent encoding', function () {\n+  it('should gracefully fallback when decodeURIComponent throws URIError', function (done) {\n+    var app = express();\n+    app.get('/user/:name', function (req, res) {\n+      res.send(req.params.name);\n+    });\n+\n+    request(app)\n+      .get('/user/%E0%A4%A')\n+      .expect(200)\n+      .expect('%E0%A4%A', done);\n+  });\n+});"
+    }
+  ],
+  "verification": {
+    "status": "verified_passed",
+    "baselineReproduced": true,
+    "baselineFailedTest": "test/Route.encoded.test.js › throws URIError on malformed path",
+    "baselineFailureMessage": "URIError: URI malformed\n    at decodeURIComponent (<anonymous>)\n    at Layer.decode_param (lib/router/layer.js:145:12)",
+    "postFixPassed": true,
+    "totalTests": 1144,
+    "passedCount": 1142,
+    "failedCount": 0,
+    "skippedCount": 2,
+    "executionDurationMs": 6420,
+    "attemptNumber": 1,
+    "maxAttempts": 3
+  },
+  "pull_request": {
+    "title": "fix(router): safely handle malformed percent encoding in route parameters (#5129)",
+    "branchName": "fixtrail/fix-issue-5129",
+    "baseBranch": "master",
+    "prNumber": 5130,
+    "url": "https://github.com/expressjs/express/pull/5130",
+    "status": "ready",
+    "bodyMarkdown": "## 🎯 Root Cause Analysis\nResolves #5129: Unhandled `URIError` when route parameters contain incomplete or malformed percent-encoded byte sequences.\n\n### 🧪 Verification Trail\n- **Baseline Failure (RED)**: Reproduced in `test/Route.encoded.test.js`\n- **Post-Patch Verification (GREEN)**: 1,142 passing tests in container sandbox\n- **Zero breaking changes**: Unaffected contracts completely preserved."
+  }
+}

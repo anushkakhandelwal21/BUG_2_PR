@@ -1,6 +1,6 @@
-# 🤖 Bug-to-PR Agent
+# 🤖 Bug2PR
 
-> *"Copilot suggests code. We ship verified fixes."*
+> *"From Issue to Verified PR"*
 
 [![Autonomous Resolution](https://img.shields.io/badge/Verification-Test--First-brightgreen.svg)](#-what-makes-us-different)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -178,13 +178,45 @@ python main.py https://github.com/Trident1211/Demo-buggy-repo/issues/1
 
 ---
 
-## 🌐 Web Console & Replay System
+## 🖥️ Bug2PR Web Application & Workspace
 
-The system exports full execution traces as structured JSON artifacts into `runs/`. These records power our web console:
+Bug2PR features a unified, editorial engineering frontend with the restored near-black & emerald design, live issue resolution workspace, test evidence timeline, diff viewer, and judge replay mode.
 
-- **Interactive Timeline:** Step-by-step visibility through Triage, Reproducer, Fixer, and Verifier stages.
-- **Trace Inspector:** Side-by-side inspection of generated regression tests, pytest failure traces, and unified diff patches.
-- **Zero-Dependency Exploration:** Historical runs can be reviewed with full fidelity without requiring live API keys or local execution environments.
+### Running the Full System (Frontend + Backend)
+
+1. **Start the Backend API Server:**
+   ```bash
+   python server.py
+   ```
+   *Runs at `http://127.0.0.1:8000` — serves system diagnostics, execution records from `runs/`, and triggers the autonomous pipeline.*
+
+2. **Start the Bug2PR Frontend:**
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+   *Runs at `http://localhost:5173/` — opens the restored Bug2PR landing page (`/`) with the verification trace panel, and the primary integrated workspace at `/dashboard`.*
+
+### Judge Replay Mode
+Judges can inspect real recorded runs without an API key:
+- Navigate to `http://localhost:5173/replay` or select any historical run in the workspace.
+- **Stage Visualizer:** Inspect Triage, Reproducer code, Unified Diff, and Pytest logs directly from genuine backend execution traces.
+- **One-Click PR Link:** Jump directly to the verified PR on GitHub when a verified pull request exists.
+
+### Legacy Streamlit CLI Utility
+The underlying backend also retains `dashboard.py` for headless or local Python-only inspection:
+```bash
+streamlit run dashboard.py
+```
+
+---
+
+## 👥 Team & Responsibilities
+
+- **P1 (Agent Brain):** Multi-agent state machine, model routing, system prompt contracts (`graph.py`, `llm.py`, `prompts.py`).
+- **P2 (Infra / GitHub / Sandbox):** Docker sandbox, diff application, GitHub REST client, run recorder (`sandbox.py`, `gh.py`, `main.py`, `recorder.py`).
+- **P3 (Dashboard / Replay):** Streamlit UI, stage timeline stepper, judge replay viewer (`dashboard.py`).
+- **P4 (Evaluation / Content):** Benchmark testbed, seeded bugs, evaluation metrics, documentation, and submission video.
 
 ---
 

@@ -1,0 +1,170 @@
+{
+  "run_id": "e8a9d14f-8321-4b11-9a77-456789abcdef",
+  "issue_url": "https://github.com/Trident1211/Demo-buggy-repo/issues/2",
+  "status": "SUCCESS",
+  "pr_url": "https://github.com/Trident1211/Demo-buggy-repo/pull/4",
+  "duration_seconds": 12.75,
+  "fix_tries": 1,
+  "timestamp": "2026-10-24T18:50:30.987654+00:00",
+  "events": [
+    {
+      "stage": "pipeline",
+      "status": "started",
+      "payload": {
+        "issue_url": "https://github.com/Trident1211/Demo-buggy-repo/issues/2"
+      },
+      "timestamp": "2026-10-24T18:50:18.000000+00:00"
+    },
+    {
+      "stage": "triage",
+      "status": "started",
+      "payload": {},
+      "timestamp": "2026-10-24T18:50:18.400000+00:00"
+    },
+    {
+      "stage": "triage",
+      "status": "completed",
+      "payload": {
+        "summary": "Validate discount percentage cannot exceed 100% or result in negative prices",
+        "affected_files": ["ecommerce/pricing.py"],
+        "affected_symbols": [
+          {
+            "file": "ecommerce/pricing.py",
+            "symbol": "calculate_discounted_price",
+            "reason": "Missing clamp or ValueError validation when discount_percent > 100"
+          }
+        ]
+      },
+      "timestamp": "2026-10-24T18:50:20.100000+00:00"
+    },
+    {
+      "stage": "reproducer",
+      "status": "started",
+      "payload": {},
+      "timestamp": "2026-10-24T18:50:20.300000+00:00"
+    },
+    {
+      "stage": "reproducer",
+      "status": "completed",
+      "payload": {
+        "test_file": "tests/test_pricing.py",
+        "sandbox_returncode": 1
+      },
+      "timestamp": "2026-10-24T18:50:23.500000+00:00"
+    },
+    {
+      "stage": "fixer",
+      "status": "started",
+      "payload": {
+        "retry": 0
+      },
+      "timestamp": "2026-10-24T18:50:23.800000+00:00"
+    },
+    {
+      "stage": "fixer",
+      "status": "completed",
+      "payload": {
+        "files_changed": ["ecommerce/pricing.py"],
+        "retry": 0
+      },
+      "timestamp": "2026-10-24T18:50:27.100000+00:00"
+    },
+    {
+      "stage": "verifier",
+      "status": "started",
+      "payload": {
+        "retry": 0
+      },
+      "timestamp": "2026-10-24T18:50:27.300000+00:00"
+    },
+    {
+      "stage": "verifier",
+      "status": "completed",
+      "payload": {
+        "passed": 18,
+        "failed": 0,
+        "full_suite_passed": true,
+        "repro_passed": true,
+        "retry": 0
+      },
+      "timestamp": "2026-10-24T18:50:29.600000+00:00"
+    },
+    {
+      "stage": "pr",
+      "status": "started",
+      "payload": {},
+      "timestamp": "2026-10-24T18:50:29.800000+00:00"
+    },
+    {
+      "stage": "pr",
+      "status": "opened",
+      "payload": {
+        "pr_url": "https://github.com/Trident1211/Demo-buggy-repo/pull/4"
+      },
+      "timestamp": "2026-10-24T18:50:30.800000+00:00"
+    },
+    {
+      "stage": "pipeline",
+      "status": "finished",
+      "payload": {
+        "pipeline_status": "SUCCESS"
+      },
+      "timestamp": "2026-10-24T18:50:30.900000+00:00"
+    }
+  ],
+  "final_state": {
+    "issue_url": "https://github.com/Trident1211/Demo-buggy-repo/issues/2",
+    "issue_title": "Discount > 100% produces negative item price",
+    "issue_body": "Passing discount_percent=150 to calculate_discounted_price results in a negative price instead of capping at 0 or raising ValueError.",
+    "repo_path": "repos/Demo-buggy-repo",
+    "file_tree": "ecommerce/\n  __init__.py\n  pricing.py\ntests/\n  __init__.py\n  test_pricing.py",
+    "triage_result": {
+      "summary": "Validate discount percentage cannot exceed 100% or result in negative prices",
+      "affected_files": ["ecommerce/pricing.py"],
+      "affected_symbols": [
+        {
+          "file": "ecommerce/pricing.py",
+          "symbol": "calculate_discounted_price",
+          "reason": "Missing clamp or ValueError validation when discount_percent > 100"
+        }
+      ],
+      "reproduction_hint": "calculate_discounted_price(100.0, 150) returns -50.0 instead of 0.0 or raising ValueError"
+    },
+    "source_snippets": {
+      "ecommerce/pricing.py": "def calculate_discounted_price(price: float, discount_percent: float) -> float:\n    discount = price * (discount_percent / 100.0)\n    return price - discount  # BUG: negative if discount_percent > 100\n"
+    },
+    "reproducer_result": {
+      "test_file_path": "tests/test_pricing.py",
+      "test_function": "test_discount_greater_than_100_percent_caps_at_zero",
+      "test_code": "def test_discount_greater_than_100_percent_caps_at_zero():\n    from ecommerce.pricing import calculate_discounted_price\n    result = calculate_discounted_price(100.0, 150.0)\n    assert result >= 0.0, f'Price should never be negative, got {result}'\n    assert result == 0.0, f'Expected 0.0 for 150% discount, got {result}'\n",
+      "expected_failure_reason": "AssertionError: Price should never be negative, got -50.0"
+    },
+    "repro_sandbox_output": {
+      "stdout": "============================= test session starts =============================\nplatform linux -- Python 3.11.9, pytest-8.1.1\nrootdir: /repo\ncollected 1 item\n\ntests/test_pricing.py F                                                    [100%]\n\n================================== FAILURES ===================================\n______________ test_discount_greater_than_100_percent_caps_at_zero _____________\n\n    def test_discount_greater_than_100_percent_caps_at_zero():\n        from ecommerce.pricing import calculate_discounted_price\n        result = calculate_discounted_price(100.0, 150.0)\n>       assert result >= 0.0, f'Price should never be negative, got {result}'\nE       AssertionError: Price should never be negative, got -50.0\n\ntests/test_pricing.py:5: AssertionError\n=========================== 1 failed in 0.07s ===========================",
+      "stderr": "",
+      "returncode": 1
+    },
+    "fixer_result": {
+      "patch": "--- a/ecommerce/pricing.py\n+++ b/ecommerce/pricing.py\n@@ -2,2 +2,4 @@\n     discount = price * (discount_percent / 100.0)\n-    return price - discount\n+    final_price = price - discount\n+    return max(0.0, round(final_price, 2))\n",
+      "files_changed": ["ecommerce/pricing.py"],
+      "explanation": "Added `max(0.0, ...)` floor to ensure prices cannot become negative when discounts exceed 100%."
+    },
+    "verifier_result": {
+      "reproduction_test_passed": true,
+      "full_suite_passed": true,
+      "total_tests": 18,
+      "passed": 18,
+      "failed": 0,
+      "errors": 0,
+      "failed_tests": [],
+      "regression_introduced": false,
+      "feedback_for_fixer": "",
+      "confidence": 1.0
+    },
+    "retry_count": 0,
+    "retry_history": [],
+    "pipeline_status": "SUCCESS",
+    "error_message": "",
+    "pr_url": "https://github.com/Trident1211/Demo-buggy-repo/pull/4"
+  }
+}

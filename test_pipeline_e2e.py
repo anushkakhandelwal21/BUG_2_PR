@@ -28,8 +28,9 @@ class TestMultiAgentPipeline(unittest.TestCase):
         while not event_bus.empty():
             event_bus.get_nowait()
 
+    @patch("gh.create_pull_request", return_value="https://github.com/my-org/repo/pull/101")
     @patch("graph.call_agent_with_repair")
-    def test_happy_path_first_attempt(self, mock_call_agent):
+    def test_happy_path_first_attempt(self, mock_call_agent, mock_pr):
         """Pipeline succeeds on the first attempt without retries."""
         
         # Define mock responses for each agent
@@ -92,8 +93,9 @@ class TestMultiAgentPipeline(unittest.TestCase):
         self.assertIn("Fix off-by-one in pagination", final_state["triage_result"]["summary"])
         print("Test 1: Happy path (0 retries) -> PASS")
 
+    @patch("gh.create_pull_request", return_value="https://github.com/my-org/repo/pull/102")
     @patch("graph.call_agent_with_repair")
-    def test_retry_loop_recovers_on_second_attempt(self, mock_call_agent):
+    def test_retry_loop_recovers_on_second_attempt(self, mock_call_agent, mock_pr):
         """Pipeline fails first test verification, retries once, then passes."""
         verifier_call_count = [0]
 

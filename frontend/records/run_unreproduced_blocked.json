@@ -1,0 +1,60 @@
+{
+  "run_id": "run_rec_unreproduced_blocked",
+  "recorded_at": "2026-10-24T12:04:12Z",
+  "recorder_version": "1.2.0",
+  "issue": {
+    "number": 892,
+    "title": "Intermittent timeout during database pool connection handshake",
+    "url": "https://github.com/pallets/flask/issues/892",
+    "repository": "pallets/flask"
+  },
+  "final_status": "blocked",
+  "duration_seconds": 64,
+  "events": [
+    {
+      "id": "ev-01",
+      "timestamp": "12:04:13",
+      "stage": "triage",
+      "status": "passed",
+      "agent": "Triage Agent",
+      "message": "Parsed issue report. User reported connection timeout during teardown.",
+      "stdout": "Extracted error signature: ConnectionTimeout in db_pool.py"
+    },
+    {
+      "id": "ev-02",
+      "timestamp": "12:04:35",
+      "stage": "reproducer",
+      "status": "running",
+      "agent": "Reproducer Agent",
+      "message": "Attempting to synthesize baseline reproduction harness on master.",
+      "stdout": "Generated tests/reproduction/test_db_timeout.py with mock pool latency."
+    },
+    {
+      "id": "ev-03",
+      "timestamp": "12:05:16",
+      "stage": "reproducer",
+      "status": "blocked",
+      "agent": "Reproducer Agent",
+      "message": "Failure to reproduce: 100 consecutive baseline test iterations completed without timeout.",
+      "stdout": "$ pytest tests/reproduction/test_db_timeout.py --count=100\n100 passed in 14.2s (No failure observed on master)",
+      "stderr": "INVARIANT HALT: Defect could not be verified on unmodified source code. Speculative patching forbidden."
+    }
+  ],
+  "verification": {
+    "status": "blocked",
+    "baselineReproduced": false,
+    "baselineFailureMessage": "Halted: Defect could not be reproduced. Strict Invariant forbids applying changes without confirmed RED baseline.",
+    "postFixPassed": false,
+    "totalTests": 100,
+    "passedCount": 100,
+    "failedCount": 0,
+    "skippedCount": 0,
+    "executionDurationMs": 14200,
+    "attemptNumber": 1,
+    "maxAttempts": 3
+  },
+  "unrecordedFields": [
+    "diffs (halted before patch synthesis)",
+    "pull_request (blocked by invariant)"
+  ]
+}

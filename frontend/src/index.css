@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-base: #07080A;
+    --bg-surface: #0C0E12;
+    --bg-elevated: #11141B;
+    --bg-overlay: #161A23;
+    
+    --border-hairline: #181C26;
+    --border-subtle: #202634;
+    --border-strong: #2D3548;
+
+    --text-primary: #F0F3F8;
+    --text-secondary: #909BB0;
+    --text-muted: #5A6478;
+    --text-faint: #3E4657;
+
+    --accent: #4F46E5;
+    --accent-hover: #4338CA;
+    --accent-muted: rgba(79, 70, 229, 0.12);
+
+    --status-green: #10B981;
+    --status-green-bg: rgba(16, 185, 129, 0.08);
+    --status-green-border: rgba(16, 185, 129, 0.25);
+
+    --status-amber: #F59E0B;
+    --status-amber-bg: rgba(245, 158, 11, 0.08);
+    --status-amber-border: rgba(245, 158, 11, 0.25);
+
+    --status-red: #EF4444;
+    --status-red-bg: rgba(239, 68, 68, 0.08);
+    --status-red-border: rgba(239, 68, 68, 0.25);
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    letter-spacing: -0.011em;
+  }
+
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Precision scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1F2533;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2D3548;
+}
+
+/* Subtle, purposeful active indicator pulse (restrained, respects reduced motion) */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes quiet-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  .animate-quiet-pulse {
+    animation: quiet-pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "run_id": "f7c10b42-1234-5678-9abc-def012345678",
+  "issue_url": "https://github.com/Trident1211/Demo-buggy-repo/issues/3",
+  "status": "SUCCESS",
+  "pr_url": "https://github.com/Trident1211/Demo-buggy-repo/pull/5",
+  "duration_seconds": 24.15,
+  "fix_tries": 2,
+  "timestamp": "2026-10-24T19:10:12.456789+00:00",
+  "events": [
+    {
+      "stage": "pipeline",
+      "status": "started",
+      "payload": {"issue_url": "https://github.com/Trident1211/Demo-buggy-repo/issues/3"},
+      "timestamp": "2026-10-24T19:09:48.000000+00:00"
+    },
+    {
+      "stage": "triage",
+      "status": "started",
+      "payload": {},
+      "timestamp": "2026-10-24T19:09:48.400000+00:00"
+    },
+    {
+      "stage": "triage",
+      "status": "completed",
+      "payload": {
+        "summary": "Handle None items in product list during batch export",
+        "affected_files": ["ecommerce/export.py"]
+      },
+      "timestamp": "2026-10-24T19:09:50.100000+00:00"
+    },
+    {
+      "stage": "reproducer",
+      "status": "started",
+      "payload": {},
+      "timestamp": "2026-10-24T19:09:50.400000+00:00"
+    },
+    {
+      "stage": "reproducer",
+      "status": "completed",
+      "payload": {
+        "test_file": "tests/test_export.py",
+        "sandbox_returncode": 1
+      },
+      "timestamp": "2026-10-24T19:09:53.200000+00:00"
+    },
+    {
+      "stage": "fixer",
+      "status": "started",
+      "payload": {"retry": 0},
+      "timestamp": "2026-10-24T19:09:53.500000+00:00"
+    },
+    {
+      "stage": "fixer",
+      "status": "completed",
+      "payload": {"files_changed": ["ecommerce/export.py"], "retry": 0},
+      "timestamp": "2026-10-24T19:09:56.800000+00:00"
+    },
+    {
+      "stage": "verifier",
+      "status": "started",
+      "payload": {"retry": 0},
+      "timestamp": "2026-10-24T19:09:57.100000+00:00"
+    },
+    {
+      "stage": "verifier",
+      "status": "completed",
+      "payload": {
+        "passed": 14,
+        "failed": 1,
+        "full_suite_passed": false,
+        "repro_passed": true,
+        "retry": 0
+      },
+      "timestamp": "2026-10-24T19:09:59.500000+00:00"
+    },
+    {
+      "stage": "retry",
+      "status": "incremented",
+      "payload": {"retry_count": 1},
+      "timestamp": "2026-10-24T19:09:59.600000+00:00"
+    },
+    {
+      "stage": "fixer",
+      "status": "started",
+      "payload": {"retry": 1},
+      "timestamp": "2026-10-24T19:09:59.800000+00:00"
+    },
+    {
+      "stage": "fixer",
+      "status": "completed",
+      "payload": {"files_changed": ["ecommerce/export.py"], "retry": 1},
+      "timestamp": "2026-10-24T19:10:04.200000+00:00"
+    },
+    {
+      "stage": "verifier",
+      "status": "started",
+      "payload": {"retry": 1},
+      "timestamp": "2026-10-24T19:10:04.500000+00:00"
+    },
+    {
+      "stage": "verifier",
+      "status": "completed",
+      "payload": {
+        "passed": 15,
+        "failed": 0,
+        "full_suite_passed": true,
+        "repro_passed": true,
+        "retry": 1
+      },
+      "timestamp": "2026-10-24T19:10:10.200000+00:00"
+    },
+    {
+      "stage": "pr",
+      "status": "started",
+      "payload": {},
+      "timestamp": "2026-10-24T19:10:10.500000+00:00"
+    },
+    {
+      "stage": "pr",
+      "status": "opened",
+      "payload": {"pr_url": "https://github.com/Trident1211/Demo-buggy-repo/pull/5"},
+      "timestamp": "2026-10-24T19:10:12.300000+00:00"
+    },
+    {
+      "stage": "pipeline",
+      "status": "finished",
+      "payload": {"pipeline_status": "SUCCESS"},
+      "timestamp": "2026-10-24T19:10:12.400000+00:00"
+    }
+  ],
+  "final_state": {
+    "issue_url": "https://github.com/Trident1211/Demo-buggy-repo/issues/3",
+    "issue_title": "TypeError: 'NoneType' object is not subscriptable in batch export",
+    "issue_body": "Exporting product batches containing deleted or None items raises TypeError during serialization.",
+    "repo_path": "repos/Demo-buggy-repo",
+    "file_tree": "ecommerce/\n  export.py\ntests/\n  test_export.py",
+    "triage_result": {
+      "summary": "Handle None items in product list during batch export",
+      "affected_files": ["ecommerce/export.py"],
+      "affected_symbols": [
+        {"file": "ecommerce/export.py", "symbol": "export_batch", "reason": "Iterates without None-check"}
+      ],
+      "reproduction_hint": "export_batch([{'id': 1}, None]) raises TypeError"
+    },
+    "source_snippets": {
+      "ecommerce/export.py": "def export_batch(items: list) -> list:\n    return [item['id'] for item in items]\n"
+    },
+    "reproducer_result": {
+      "test_file_path": "tests/test_export.py",
+      "test_function": "test_export_batch_handles_none_elements",
+      "test_code": "def test_export_batch_handles_none_elements():\n    from ecommerce.export import export_batch\n    res = export_batch([{'id': 101}, None, {'id': 102}])\n    assert res == [101, 102]\n",
+      "expected_failure_reason": "TypeError: 'NoneType' object is not subscriptable"
+    },
+    "repro_sandbox_output": {
+      "stdout": "============================= test session starts =============================\nplatform linux -- Python 3.11.9, pytest-8.1.1\nrootdir: /repo\ncollected 1 item\n\ntests/test_export.py F                                                     [100%]\n\n================================== FAILURES ===================================\n___________________ test_export_batch_handles_none_elements ____________________\n\n    def test_export_batch_handles_none_elements():\n        from ecommerce.export import export_batch\n>       res = export_batch([{'id': 101}, None, {'id': 102}])\n\necommerce/export.py:2: in export_batch\n    return [item['id'] for item in items]\nE   TypeError: 'NoneType' object is not subscriptable\n=========================== 1 failed in 0.06s ===========================",
+      "stderr": "",
+      "returncode": 1
+    },
+    "fixer_result": {
+      "patch": "--- a/ecommerce/export.py\n+++ b/ecommerce/export.py\n@@ -1,2 +1,2 @@\n def export_batch(items: list) -> list:\n-    return [item['id'] for item in items]\n+    return [item['id'] for item in items if item is not None and 'id' in item]\n",
+      "files_changed": ["ecommerce/export.py"],
+      "explanation": "Added filtering predicate `if item is not None and 'id' in item` to skip missing or deleted records without crashing."
+    },
+    "verifier_result": {
+      "reproduction_test_passed": true,
+      "full_suite_passed": true,
+      "total_tests": 15,
+      "passed": 15,
+      "failed": 0,
+      "errors": 0,
+      "failed_tests": [],
+      "regression_introduced": false,
+      "feedback_for_fixer": "",
+      "confidence": 1.0
+    },
+    "retry_count": 1,
+    "retry_history": [
+      {
+        "patch": "--- a/ecommerce/export.py\n+++ b/ecommerce/export.py\n@@ -1,2 +1,2 @@\n def export_batch(items: list) -> list:\n-    return [item['id'] for item in items]\n+    return [item.get('id') for item in items if item]\n",
+        "failure": "Existing test_export_empty_ids expects KeyError when dict is missing 'id' key; None was returned."
+      }
+    ],
+    "pipeline_status": "SUCCESS",
+    "error_message": "",
+    "pr_url": "https://github.com/Trident1211/Demo-buggy-repo/pull/5"
+  }
+}
