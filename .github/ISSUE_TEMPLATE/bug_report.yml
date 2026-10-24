@@ -1,0 +1,29 @@
+name: Bug Report
+description: File a bug report for the multi-agent pipeline
+title: "[BUG]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting an issue! Please describe the problem as clearly as possible.
+  - type: input
+    id: issue_url
+    attributes:
+      label: Target Repository / Issue URL
+      description: The GitHub issue URL the pipeline was run against
+      placeholder: https://github.com/owner/repo/issues/1
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem Description
+      description: What went wrong during execution?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Execution Logs / Trace
+      description: Paste any terminal errors, traceback, or recorder JSON output
+      render: shell
