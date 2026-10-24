@@ -1,15 +1,15 @@
 """
-server.py — Bug2PR Backend API Server
-======================================
-Serves the autonomous bug-resolution engine and saved execution records
-to the Bug2PR Vite frontend.
+server.py — Bug2PR FastAPI Backend Server
+===========================================
+High-performance asynchronous API server serving the Bug2PR autonomous
+resolution engine and execution records to the React/Vite frontend.
 
 Endpoints:
-  GET  /api/health      - System health & credential diagnostics
-  GET  /api/runs        - List all saved execution records from recorder.py
-  GET  /api/records     - Raw list of JSON run records
-  GET  /api/runs/<id>   - Retrieve a specific execution record by run_id
-  POST /api/runs        - Submit a real GitHub issue URL to run the pipeline
+  GET  /api/health       - System health & credential diagnostics
+  GET  /api/runs         - List all recorded runs from runs/
+  GET  /api/records      - Alias for /api/runs (raw execution records)
+  GET  /api/runs/{run_id}- Retrieve full execution record by run_id
+  POST /api/runs         - Submit a GitHub issue URL to run the pipeline
 """
 
 from __future__ import annotations
@@ -18,20 +18,20 @@ import json
 import logging
 import os
 import shutil
-import sys
 import time
 from pathlib import Path
 from typing import Any, Optional
 
-# Load environment
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
     pass
 
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+import uvicorn
+from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 import gh
 import graph
@@ -42,10 +42,22 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger("bug_resolver.server")
+logger = logging.getLogger("bug_resolver.fastapi")
 
-app = Flask("bug2pr_api")
-CORS(app)
+app = FastAPI(
+    title="Bug2PR Autonomous Engine API",
+    description="High-performance backend for autonomous bug resolution and PR synthesis",
+    version="2.0.0",
+)
+
+# Enable CORS for the Vite development server (localhost:5173) and any deployed frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 RUNS_DIR = BASE_DIR / "runs"
@@ -68,36 +80,39 @@ def _find_run_by_id(run_id: str) -> Optional[dict[str, Any]]:
     return None
 
 
-@app.route("/api/health", methods=["GET"])
-def get_health():
-    """Honest credential and system status checks."""
-    groq_key = os.environ.get("GROQ_API_KEY", "")
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    gh_token = os.environ.get("GITHUB_TOKEN", "")
+class RunSubmission(BaseModel):
+    issueUrl: str = Field(..., description="Target GitHub Issue URL")
+    targetBranch: Optional[str] = Field("main", description="Target base branch")
+    maxRetries: Optional[int] = Field(4, description="Maximum self-repair retry loops")
 
+
+@app.get("/api/health")
+def get_health():
+    """System health, environment credentials check, and trace counts."""
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    gh_token = os.environ.get("GITHUB_TOKEN", "")
     total_runs = len(list(RUNS_DIR.glob("run_*.json"))) if RUNS_DIR.exists() else 0
 
-    return jsonify({
+    return {
         "status": "healthy",
-        "service": "Bug2PR Autonomous Engine API",
+        "service": "Bug2PR FastAPI Engine",
         "repository": "https://github.com/anushkakhandelwal21/BUG_2_PR",
         "tagline": "From Issue to Verified PR",
         "credentials": {
-            "llmConfigured": bool(groq_key or gemini_key),
+            "llmConfigured": bool(groq_key),
             "groqConfigured": bool(groq_key),
-            "geminiConfigured": bool(gemini_key),
             "githubConfigured": bool(gh_token),
         },
         "recordsDirectory": str(RUNS_DIR),
         "totalRunsRecorded": total_runs,
-    })
+    }
 
 
-@app.route("/api/runs", methods=["GET"])
+@app.get("/api/runs")
 def get_runs():
-    """Return all recorded runs from the runs/ directory."""
+    """Retrieve all recorded runs sorted by timestamp descending."""
     if not RUNS_DIR.exists():
-        return jsonify([])
+        return []
 
     records = []
     for file in sorted(RUNS_DIR.glob("run_*.json"), reverse=True):
@@ -107,62 +122,71 @@ def get_runs():
         except Exception as exc:
             logger.warning("Error reading %s: %s", file, exc)
             continue
-    return jsonify(records)
+    return records
 
 
-@app.route("/api/records", methods=["GET"])
+@app.get("/api/records")
 def get_records():
-    """Alias for /api/runs returning raw execution records."""
+    """Alias for /api/runs returning raw execution traces for Vite frontend."""
     return get_runs()
 
 
-@app.route("/api/runs/<run_id>", methods=["GET"])
+@app.get("/api/runs/{run_id}")
 def get_run_details(run_id: str):
-    """Retrieve full execution record by run_id."""
+    """Retrieve full execution record details by run_id."""
     record = _find_run_by_id(run_id)
     if not record:
-        return jsonify({"error": f"Run record '{run_id}' not found"}), 404
-    return jsonify(record)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Run record '{run_id}' not found",
+        )
+    return record
 
 
-@app.route("/api/runs", methods=["POST"])
-def submit_run():
+@app.post("/api/runs", status_code=status.HTTP_201_CREATED)
+def submit_run(payload: RunSubmission):
     """
     Execute the Bug2PR autonomous pipeline on a real GitHub issue URL.
-    Saves the final immutable record to runs/ and returns the full record.
+    Saves the final immutable record to runs/ and returns the full JSON record.
     """
-    body = request.get_json(force=True, silent=True) or {}
-    issue_url = (body.get("issueUrl") or "").strip()
+    issue_url = payload.issueUrl.strip()
 
     if not issue_url.startswith("https://github.com/"):
-        return jsonify({
-            "error": "Invalid issue URL. Must be in format https://github.com/owner/repo/issues/N"
-        }), 400
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid issue URL. Must follow format https://github.com/owner/repo/issues/N",
+        )
 
     start_time = time.time()
-    logger.info("Starting Bug2PR pipeline for issue: %s", issue_url)
+    logger.info("FastAPI triggered pipeline for issue: %s", issue_url)
 
     # 1. Check LLM configuration
     groq_key = os.environ.get("GROQ_API_KEY", "")
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    if not groq_key and not gemini_key:
-        return jsonify({
-            "error": "Missing LLM API key. Set GROQ_API_KEY or GEMINI_API_KEY in backend environment before starting pipeline."
-        }), 503
+    if not groq_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Missing GROQ_API_KEY. Configure .env with your Groq API key before triggering runs.",
+        )
 
     # 2. Fetch issue metadata
     try:
         issue = gh.fetch_issue(issue_url)
     except Exception as exc:
         logger.error("Failed to fetch issue from GitHub: %s", exc)
-        return jsonify({"error": f"Failed to fetch issue from GitHub: {exc}"}), 400
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to fetch issue from GitHub: {exc}",
+        )
 
     # 3. Clone repository
     try:
         repo_path = gh.clone_repo(issue_url, target_dir=str(BASE_DIR / "repos"))
     except Exception as exc:
         logger.error("Failed to clone repository: %s", exc)
-        return jsonify({"error": f"Failed to clone repository: {exc}"}), 500
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to clone repository: {exc}",
+        )
 
     # 4. Build file tree
     file_tree = gh.get_file_tree(repo_path)
@@ -178,7 +202,10 @@ def submit_run():
         )
     except Exception as exc:
         logger.exception("Pipeline crashed: %s", exc)
-        return jsonify({"error": f"Pipeline crashed during execution: {exc}"}), 500
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Pipeline crashed during execution: {exc}",
+        )
 
     # 6. Save execution record
     saved_path = recorder.save_run(
@@ -188,10 +215,10 @@ def submit_run():
     )
     logger.info("Saved run record to %s", saved_path)
 
-    # Also copy record to Vite public/records so Vite static fallback is kept synchronized
+    # Synchronize to Vite static public directories if they exist
     for target_dir in [
         BASE_DIR / "frontend" / "public" / "records",
-        BASE_DIR.parent / "patchpilot" / "public" / "records",
+        BASE_DIR.parent / "temp_frontend_check" / "frontend" / "public" / "records",
     ]:
         try:
             if target_dir.exists():
@@ -202,13 +229,13 @@ def submit_run():
         except Exception as exc:
             logger.warning("Could not sync record to %s: %s", target_dir, exc)
 
-    return jsonify(recorder.read_run(saved_path)), 201
+    return recorder.read_run(saved_path)
 
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("  Bug2PR Backend API Server")
-    print("  Tagline: From Issue to Verified PR")
+    print("  Bug2PR FastAPI Server")
     print("  Serving at: http://127.0.0.1:8000")
+    print("  Docs:       http://127.0.0.1:8000/docs")
     print("=" * 60)
-    app.run(host="127.0.0.1", port=8000, debug=False)
+    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
