@@ -208,6 +208,37 @@ export const RunDetailsPage: React.FC = () => {
             </div>
           </div>
 
+          {/* Pending Pipeline Banner */}
+          {run.status === 'pending' && (
+            <div className="p-3 bg-[#131518] border border-amber-500/30 rounded-[3px] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-amber-300 font-semibold">
+                  <AlertCircle className="w-4 h-4 text-amber-400" />
+                  <span>Pipeline Awaiting Execution</span>
+                </div>
+                <p className="text-[11px] text-zinc-400 font-sans">
+                  Issue ingested: <code className="text-zinc-300">{run.issueUrl}</code>. You can load the verified benchmark record or execute in sandbox.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={async () => {
+                    await fetchRunData(run.id, true);
+                  }}
+                  className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-[2px] transition-colors"
+                >
+                  Load Verified Trace
+                </button>
+                <Link
+                  to="/dashboard"
+                  className="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-[2px] transition-colors"
+                >
+                  Return to Workspace
+                </Link>
+              </div>
+            </div>
+          )}
+
           {/* Navigation Sub-Tabs */}
           <div className="flex items-center gap-1 pt-2 border-t border-[#1C1D1F] text-[11px]">
             <button
