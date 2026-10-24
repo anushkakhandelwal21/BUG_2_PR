@@ -1,0 +1,8 @@
+# P1 — Agent Brain dependencies
+# Install with: pip install -r requirements.txt
+
+google-generativeai>=0.7.0
+langgraph>=0.2.0
+langchain-core>=0.2.0
+tenacity>=8.2.0
+typing-extensions>=4.9.0
