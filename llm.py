@@ -1,8 +1,8 @@
 """
-llm.py — P1: Agent Brain
-=========================
-Gemini API client with:
-  • Model routing  — fast (Flash) vs smart (Pro) selection per agent
+llm.py — Groq LLM Client
+==========================
+Groq API client with:
+  • Model routing  — fast (8B) vs smart (70B) selection per agent
   • Prompt caching — SHA-256 keyed in-memory + optional disk cache
   • Output validation & repair — JSON extraction, schema checks, retries
   • Rate-limit handling — exponential backoff with jitter
@@ -10,7 +10,7 @@ Gemini API client with:
 
 Dependencies
 ------------
-  google-generativeai>=0.7.0
+  groq>=0.28.0
   tenacity>=8.2.0
 """
 
@@ -26,7 +26,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-import google.generativeai as genai
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -48,11 +47,11 @@ logging.basicConfig(
 # ---------------------------------------------------------------------------
 # Model aliases
 # ---------------------------------------------------------------------------
-# "fast"  → Gemini 2.0 Flash  — used for Triage and Verifier (structured parse)
-# "smart" → Gemini 2.5 Pro    — used for Reproducer and Fixer (complex reasoning)
+# "fast"  → small model — used for Triage and Verifier (structured parse)
+# "smart" → large model — used for Reproducer and Fixer (complex reasoning)
 
-MODEL_FAST  = "gemini-2.0-flash"
-MODEL_SMART = "gemini-2.5-pro"
+MODEL_FAST  = os.environ.get("MODEL_FAST",  "openai/gpt-oss-20b")
+MODEL_SMART = os.environ.get("MODEL_SMART", "openai/gpt-oss-120b")
 
 # Per-agent routing table — override with env var AGENT_MODEL_<AGENT> if needed
 _AGENT_MODEL_MAP: dict[str, str] = {
@@ -65,19 +64,10 @@ _AGENT_MODEL_MAP: dict[str, str] = {
 # ---------------------------------------------------------------------------
 # Generation config defaults
 # ---------------------------------------------------------------------------
-_DEFAULT_CONFIG = genai.types.GenerationConfig(
-    temperature=0.2,          # low temperature → deterministic, less hallucination
-    top_p=0.95,
-    max_output_tokens=8192,
-    response_mime_type="application/json",   # ask Gemini for JSON mode
-)
-
-_SMART_CONFIG = genai.types.GenerationConfig(
-    temperature=0.3,
-    top_p=0.95,
-    max_output_tokens=16384,
-    response_mime_type="application/json",
-)
+_FAST_MAX_TOKENS  = 4096
+_SMART_MAX_TOKENS = 8192
+_FAST_TEMPERATURE  = 0.2
+_SMART_TEMPERATURE = 0.3
 
 # ---------------------------------------------------------------------------
 # Prompt cache (in-memory, survives within a single pipeline run)
@@ -127,21 +117,26 @@ _CACHE_DIR_ENV = os.environ.get("LLM_CACHE_DIR")
 cache = _PromptCache(disk_dir=Path(_CACHE_DIR_ENV) if _CACHE_DIR_ENV else None)
 
 # ---------------------------------------------------------------------------
-# Gemini client initialisation
+# Groq client — lazy initialisation (no crash on import)
 # ---------------------------------------------------------------------------
 
-def _init_genai() -> None:
-    """Initialise the Gemini SDK once from GEMINI_API_KEY env var."""
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise EnvironmentError(
-            "GEMINI_API_KEY environment variable is not set. "
-            "Export it before running the pipeline."
-        )
-    genai.configure(api_key=api_key)
+_client = None
 
 
-_init_genai()
+def _get_client():
+    """Initialise and return the Groq client (lazy, singleton)."""
+    global _client
+    if _client is None:
+        from groq import Groq
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            raise EnvironmentError(
+                "GROQ_API_KEY environment variable is not set. "
+                "Export it before running the pipeline."
+            )
+        _client = Groq(api_key=api_key)
+    return _client
+
 
 # ---------------------------------------------------------------------------
 # JSON extraction helpers
@@ -158,8 +153,6 @@ def _extract_json(raw: str) -> dict[str, Any]:
     - Bare JSON
     - JSON wrapped in markdown fences (```json ... ```)
     - Leading/trailing whitespace
-
-    Raises ValueError if no valid JSON object is found.
     """
     raw = raw.strip()
 
@@ -218,7 +211,7 @@ _REQUIRED_KEYS: dict[str, list[str]] = {
 # ---------------------------------------------------------------------------
 
 class _RateLimitError(Exception):
-    """Raised when Gemini returns a 429 / RESOURCE_EXHAUSTED."""
+    """Raised when Groq returns a 429 / rate limit."""
 
 
 @retry(
@@ -227,47 +220,49 @@ class _RateLimitError(Exception):
     wait=wait_exponential(multiplier=1, min=4, max=60),
     before_sleep=before_sleep_log(logger, logging.WARNING),
 )
-def _call_gemini(
+def _call_groq(
     model_name: str,
     system_prompt: str,
     user_prompt: str,
-    generation_config: genai.types.GenerationConfig,
+    max_tokens: int,
+    temperature: float,
 ) -> str:
     """
-    Make a single Gemini API call and return the raw text response.
+    Make a single Groq API call and return the raw text response.
 
     Raises _RateLimitError on 429 so tenacity can retry with backoff.
     """
-    model = genai.GenerativeModel(
-        model_name=model_name,
-        system_instruction=system_prompt,
-        generation_config=generation_config,
-    )
+    client = _get_client()
 
     try:
-        response = model.generate_content(user_prompt)
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=temperature,
+            max_tokens=max_tokens,
+            response_format={"type": "json_object"},
+        )
     except Exception as exc:
-        # Surface rate-limit errors so tenacity can handle them
         err_str = str(exc).lower()
-        if "429" in err_str or "resource_exhausted" in err_str or "quota" in err_str:
+        if "429" in err_str or "rate" in err_str or "quota" in err_str or "limit" in err_str:
             jitter = random.uniform(0, 2)
             logger.warning("Rate limit hit, will retry after backoff (jitter=%.1fs)", jitter)
             time.sleep(jitter)
             raise _RateLimitError(str(exc)) from exc
         raise
 
-    # Handle safety blocks or empty responses
-    if not response.candidates:
-        raise ValueError("Gemini returned no candidates (possible safety block).")
+    # Handle empty responses
+    if not response.choices:
+        raise ValueError("Groq returned no choices.")
 
-    candidate = response.candidates[0]
-    if candidate.finish_reason.name not in ("STOP", "MAX_TOKENS"):
-        raise ValueError(
-            f"Unexpected finish_reason: {candidate.finish_reason.name}. "
-            "Possible safety filter or model error."
-        )
+    text = response.choices[0].message.content
+    if not text:
+        raise ValueError("Groq returned an empty response.")
 
-    return response.text
+    return text
 
 
 # ---------------------------------------------------------------------------
@@ -283,7 +278,7 @@ def call_agent(
     force_model: str | None = None,
 ) -> dict[str, Any]:
     """
-    Call the Gemini model appropriate for `agent`, validate the JSON response,
+    Call the Groq model appropriate for `agent`, validate the JSON response,
     and return a parsed dictionary.
 
     Parameters
@@ -297,19 +292,12 @@ def call_agent(
     use_cache : bool
         Whether to check / write the prompt cache (default True).
     force_model : str | None
-        Override model selection (e.g., "gemini-2.5-pro").
+        Override model selection.
 
     Returns
     -------
     dict
         Parsed and validated JSON response from the model.
-
-    Raises
-    ------
-    ValueError
-        If the model response cannot be parsed or is missing required keys.
-    EnvironmentError
-        If GEMINI_API_KEY is not set.
     """
     # Resolve model
     model_name = force_model or os.environ.get(
@@ -317,7 +305,9 @@ def call_agent(
         _AGENT_MODEL_MAP.get(agent, MODEL_FAST),
     )
 
-    gen_cfg = _SMART_CONFIG if model_name == MODEL_SMART else _DEFAULT_CONFIG
+    is_smart = model_name in (MODEL_SMART,) or "70b" in model_name or "120b" in model_name
+    max_tokens  = _SMART_MAX_TOKENS if is_smart else _FAST_MAX_TOKENS
+    temperature = _SMART_TEMPERATURE if is_smart else _FAST_TEMPERATURE
 
     # Cache check
     if use_cache:
@@ -327,12 +317,12 @@ def call_agent(
 
     # Log call metadata
     logger.info(
-        "LLM call | agent=%-10s | model=%-25s | prompt_chars=%d",
+        "LLM call | agent=%-10s | model=%-30s | prompt_chars=%d",
         agent, model_name, len(system_prompt) + len(user_prompt),
     )
     t0 = time.perf_counter()
 
-    raw_text = _call_gemini(model_name, system_prompt, user_prompt, gen_cfg)
+    raw_text = _call_groq(model_name, system_prompt, user_prompt, max_tokens, temperature)
 
     elapsed = time.perf_counter() - t0
     logger.info("LLM done  | agent=%-10s | elapsed=%.2fs | response_chars=%d",
