@@ -83,17 +83,12 @@ flowchart TD
 
 ```
 BUG_2_PR/
-├── main.py              # CLI Entrypoint (python main.py <issue_url>)
-├── graph.py             # Multi-agent state machine orchestrator
-├── llm.py               # Groq LLM client with caching & self-repair
-├── prompts.py           # Structured prompts with JSON output contracts
-├── sandbox.py           # Docker/Local isolated test execution & patch applier
-├── gh.py                # GitHub REST API client (clone, issues, PRs)
-├── recorder.py          # Saves immutable execution traces to runs/
-├── smoke_test.py        # Module-level integration smoke test suite
-├── test_pipeline_e2e.py # End-to-end simulation unit tests
-├── Dockerfile           # Minimal Python sandbox container
-├── demo_repo/           # Seeded bug testbed (pagination & pricing defects)
+├── .github/
+│   ├── ISSUE_TEMPLATE/
+│   │   ├── bug_report.yml       # Structured bug report template
+│   │   └── feature_request.yml  # Feature enhancement proposal template
+│   └── pull_request_template.md # Standardized PR review checklist
+├── demo_repo/                   # Seeded bug testbed (pagination & pricing defects)
 │   ├── api/
 │   │   └── pagination.py
 │   ├── ecommerce/
@@ -101,10 +96,26 @@ BUG_2_PR/
 │   └── tests/
 │       ├── test_pagination.py
 │       └── test_pricing.py
-├── runs/                # Immutable execution run records
-├── requirements.txt     # Project dependencies
-├── .env.example         # Environment variables template
-└── .gitignore           # Git ignore definitions
+├── runs/                        # Immutable JSON execution traces for replay
+├── main.py                      # CLI Entrypoint (python main.py <issue_url>)
+├── graph.py                     # Multi-agent state machine orchestrator
+├── llm.py                       # Groq LLM client with caching & self-repair
+├── prompts.py                   # Structured prompts with JSON output contracts
+├── sandbox.py                   # Docker/Local isolated test execution & patch applier
+├── gh.py                        # GitHub REST API client (clone, issues, PRs)
+├── recorder.py                  # Saves immutable execution traces to runs/
+├── smoke_test.py                # Module-level integration smoke test suite
+├── test_pipeline_e2e.py         # End-to-end simulation unit tests
+├── Dockerfile                   # Minimal Python sandbox container
+├── requirements.txt             # Project dependencies
+├── .env.example                 # Environment variables template
+├── .gitignore                   # Git ignore definitions
+├── ARCHITECTURE.md              # Multi-agent protocol & state schema specification
+├── BENCHMARKS.md                # Empirical evaluation & benchmark report
+├── CONTRIBUTING.md              # Contributor guidelines and coding standards
+├── CODE_OF_CONDUCT.md           # Community standards and covenant
+├── SECURITY.md                  # Sandbox isolation & security model policy
+└── LICENSE                      # MIT Open Source License
 ```
 
 ---
