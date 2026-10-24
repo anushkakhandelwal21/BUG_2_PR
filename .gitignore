@@ -1,14 +1,35 @@
+# Environment
+.env
+
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-*.so
-.env
-.venv
-env/
-venv/
-ENV/
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Testing
 .pytest_cache/
-.coverage
 htmlcov/
-*.log
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Run records (generated)
+runs/
+
+# Cloned repos (generated)
+repos/
+
+# Cache
 .cache/
+*.tmp_patch.diff
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

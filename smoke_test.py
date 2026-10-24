@@ -1,8 +1,10 @@
-"""Smoke test for P1 files: prompts.py, llm.py, graph.py"""
+"""Smoke test for P1+P2 integrated files: prompts.py, llm.py, graph.py, sandbox.py, gh.py, recorder.py"""
 import os
 import sys
 
-os.environ["GEMINI_API_KEY"] = "dummy_key_for_import_test"
+# No API key needed for smoke tests — llm.py now uses lazy init
+# Set a dummy key so imports don't fail if code checks env at any point
+os.environ.setdefault("GROQ_API_KEY", "dummy_key_for_import_test")
 
 # ── 1. prompts.py ────────────────────────────────────────────────────────────
 from prompts import (
@@ -70,7 +72,7 @@ data = _extract_json(raw)
 assert data["summary"] == "test"
 
 # _extract_json — fenced JSON
-fenced = "```json\n{\"summary\": \"fenced\", \"confidence\": 0.8}\n```"
+fenced = '```json\n{"summary": "fenced", "confidence": 0.8}\n```'
 data2 = _extract_json(fenced)
 assert data2["summary"] == "fenced"
 
@@ -96,9 +98,6 @@ print("llm.py:     ALL PASS")
 
 
 # ── 3. graph.py ──────────────────────────────────────────────────────────────
-# We import graph.py which calls genai.configure() with the dummy key.
-# We only verify that the module loads, AgentState is defined, and
-# run_pipeline exists — no real LLM calls are made.
 try:
     import graph as graph_mod
     assert hasattr(graph_mod, "run_pipeline"), "run_pipeline not found"
@@ -108,10 +107,33 @@ try:
     print("graph.py:   ALL PASS")
 except Exception as e:
     print(f"graph.py:   IMPORT WARNING — {e}")
-    print("  (This is expected if google-generativeai or langgraph are not installed)")
+
+
+# ── 4. sandbox.py ────────────────────────────────────────────────────────────
+from sandbox import run_command, run_reproduction_test, run_patch
+assert callable(run_command), "run_command not callable"
+assert callable(run_reproduction_test), "run_reproduction_test not callable"
+assert callable(run_patch), "run_patch not callable"
+print("sandbox.py: ALL PASS")
+
+
+# ── 5. gh.py ─────────────────────────────────────────────────────────────────
+from gh import fetch_issue, clone_repo, get_file_tree, read_files, create_pull_request, _parse_issue_url
+parsed = _parse_issue_url("https://github.com/octocat/hello-world/issues/42")
+assert parsed["owner"] == "octocat"
+assert parsed["repo"] == "hello-world"
+assert parsed["number"] == "42"
+print("gh.py:      ALL PASS")
+
+
+# ── 6. recorder.py ───────────────────────────────────────────────────────────
+from recorder import save_run, read_run, list_runs
+assert callable(save_run), "save_run not callable"
+assert callable(list_runs), "list_runs not callable"
+print("recorder.py: ALL PASS")
 
 
 print()
-print("=" * 45)
-print("  ALL P1 SMOKE TESTS PASSED SUCCESSFULLY")
-print("=" * 45)
+print("=" * 50)
+print("  ALL SMOKE TESTS PASSED SUCCESSFULLY")
+print("=" * 50)

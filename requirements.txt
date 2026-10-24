@@ -1,8 +1,27 @@
-# P1 — Agent Brain dependencies
+# Bug-to-PR Agent — Unified Dependencies
 # Install with: pip install -r requirements.txt
 
-google-generativeai>=0.7.0
+# LLM
+groq>=0.28.0
+
+# State machine
 langgraph>=0.2.0
 langchain-core>=0.2.0
+
+# Retry / resilience
 tenacity>=8.2.0
+
+# GitHub API
+requests>=2.31.0
+
+# Type hints
 typing-extensions>=4.9.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=7.0.0
+
+# Dashboard (P3)
+streamlit>=1.30.0

@@ -44,6 +44,12 @@ from typing import Annotated, Any, Callable, Dict, Optional
 from typing_extensions import TypedDict
 
 try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+try:
     from langgraph.graph import END, START, StateGraph
 except ImportError:
     # Lightweight native fallback matching LangGraph's API exactly
@@ -223,8 +229,21 @@ def node_triage(state: AgentState) -> dict[str, Any]:
             ),
         )
         emit_event("triage", "completed", {"summary": result.get("summary")})
+        
+        # Automatically read the affected files so reproducer & fixer have real code
+        source_snippets = dict(state.get("source_snippets") or {})
+        try:
+            from gh import read_files
+            affected = result.get("affected_files", [])
+            if affected and state.get("repo_path"):
+                snippets = read_files(state["repo_path"], affected)
+                source_snippets.update(snippets)
+        except Exception as exc:
+            logger.warning("Could not read affected files: %s", exc)
+
         return {
             "triage_result":   result,
+            "source_snippets": source_snippets,
             "pipeline_status": "RUNNING",
             "error_message":   "",
         }
@@ -272,6 +291,20 @@ def node_reproducer(state: AgentState) -> dict[str, Any]:
             # sandbox.py not yet available (e.g., unit-test context)
             logger.warning("sandbox.py not found — skipping sandbox confirmation step.")
             sandbox_out = {"stdout": "", "stderr": "", "returncode": 1}
+
+        # Gate: reproduction test MUST fail (returncode != 0) to confirm bug
+        if sandbox_out.get("returncode") == 0:
+            logger.warning("Reproduction test PASSED — bug not confirmed.")
+            emit_event("reproducer", "not_reproduced", {
+                "test_file": result.get("test_file_path"),
+                "sandbox_returncode": 0,
+            })
+            return {
+                "reproducer_result":    result,
+                "repro_sandbox_output": sandbox_out,
+                "pipeline_status":      "FAILED",
+                "error_message":        "Reproduction test passed (bug not confirmed). Cannot proceed.",
+            }
 
         emit_event("reproducer", "completed", {
             "test_file": result.get("test_file_path"),
