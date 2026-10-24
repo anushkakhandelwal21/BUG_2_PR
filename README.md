@@ -112,8 +112,6 @@ BUG_2_PR/
 ├── .gitignore                   # Git ignore definitions
 ├── ARCHITECTURE.md              # Multi-agent protocol & state schema specification
 ├── BENCHMARKS.md                # Empirical evaluation & benchmark report
-├── CONTRIBUTING.md              # Contributor guidelines and coding standards
-├── CODE_OF_CONDUCT.md           # Community standards and covenant
 ├── SECURITY.md                  # Sandbox isolation & security model policy
 └── LICENSE                      # MIT Open Source License
 ```
