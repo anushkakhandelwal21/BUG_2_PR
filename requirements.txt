@@ -1,6 +1,11 @@
 # Bug-to-PR Agent — Unified Dependencies
 # Install with: pip install -r requirements.txt
 
+# API Server
+fastapi
+uvicorn[standard]
+pydantic
+
 # LLM
 groq>=0.28.0
 
@@ -23,5 +28,5 @@ python-dotenv>=1.0.0
 # Testing
 pytest>=7.0.0
 
-# Dashboard (P3)
+# Dashboard
 streamlit>=1.30.0
