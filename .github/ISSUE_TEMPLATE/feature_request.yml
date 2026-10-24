@@ -1,0 +1,27 @@
+name: Feature Request
+description: Suggest an idea or capability enhancement for Bug-to-PR
+title: "[FEATURE]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: We welcome new agent types, prompt strategies, or sandbox integrations.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Limitation
+      description: Is your feature request related to a specific limitation in the pipeline?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Architecture / Solution
+      description: Describe your proposed enhancement or agent behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Any alternative designs or approaches evaluated?
