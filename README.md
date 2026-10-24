@@ -7,47 +7,45 @@
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 [![LLM: Groq](https://img.shields.io/badge/LLM-Groq%20Llama%203.3%20%2F%20GPT--OSS-orange.svg)](https://groq.com/)
 
-An autonomous multi-agent software engineering system that takes a **GitHub Issue URL** and outputs a **fully verified Pull Request**—guaranteed by an automated regression test written *before* the fix is authored.
-
-Built for the **IIT Roorkee "Syntax Error" Hackathon 2026**.
+An autonomous multi-agent software engineering system that ingests a **GitHub Issue URL** and outputs a **fully verified Pull Request**—guaranteed by an automated regression test authored and proven *before* the fix is written.
 
 ---
 
-## ⚡ Live Verification in Numbers
+## ⚡ Empirical Benchmark Results
 
-Our pipeline is evaluated on real seeded bugs and benchmarked against execution speed and test integrity:
+The pipeline is benchmarked against real seeded bugs to measure execution latency, test integrity, and automated fix accuracy:
 
-| Benchmark Issue | Target Bug | Diagnosis & Proof | Resolution Time | Retries | Verified PR |
+| Benchmark Issue | Target Defect | Reproduction & Proof | Resolution Time | Retries | Verified PR |
 |---|---|---|---|---|---|
 | **[Issue #1](https://github.com/Trident1211/Demo-buggy-repo/issues/1)** | Pagination drops last page element | ✅ Reproducing test written & failed | **13.08s** | 0 | **[PR #3](https://github.com/Trident1211/Demo-buggy-repo/pull/3)** |
-| **[Issue #2](https://github.com/Trident1211/Demo-buggy-repo/issues/2)** | Discount $>100\%$ produces negative price | ✅ Reproducing test written & failed | **12.75s** | 0 | **[PR #4](https://github.com/Trident1211/Demo-buggy-repo/pull/4)** |
+| **[Issue #2](https://github.com/Trident1211/Demo-buggy-repo/issues/2)** | Discount $>100\%$ yields negative price | ✅ Reproducing test written & failed | **12.75s** | 0 | **[PR #4](https://github.com/Trident1211/Demo-buggy-repo/pull/4)** |
 
 ---
 
 ## 💡 The Problem
 
-Software maintainers and agile engineering teams are inundated with bug reports. While modern LLM tools suggest plausible patches, **they do not prove them**:
-- They don't reproduce the bug in an isolated environment.
-- They don't verify that the fix actually eliminates the failure.
-- They don't ensure that existing features didn't silently regress.
-- **Humans are still forced to verify and test everything manually.**
+Engineering teams and maintainers spend disproportionate time diagnosing bug reports, reproducing edge cases, and manually verifying regressions. While modern coding assistants generate plausible patches, **they cannot prove them**:
+- They do not reproduce the defect in an isolated environment.
+- They cannot prove that the patch eliminates the failure.
+- They do not verify whether existing features silently broke.
+- **Developers are still forced to verify and test everything by hand.**
 
 ---
 
 ## 🏆 What Makes Us Different
 
-AI that writes code is not new. **Our differentiator is how we prove it:**
+AI that writes code is not new. **Our differentiator is test-first proof of correctness:**
 
-1. **Test-First Verification:** A failing regression test is generated and proven to fail in the sandbox *before* any patch is written. The regression test ships inside the PR as permanent proof.
-2. **Honest Failure (Zero Hallucinated PRs):** If the agent fails to reproduce the bug or fails the test suite after maximum attempts, it **stops and reports honestly**. No fake, half-baked PRs are ever opened.
-3. **Safe by Design:** Code and tests run in an isolated execution sandbox (`SANDBOX_MODE=docker` or `local`), preventing network access during test runs and restricting file writes strictly to the target repository.
-4. **Offline Replay Mode for Judges:** Every single run emits an immutable trace to `runs/*.json`. Judges can explore every decision, test failure trace, and unified diff locally **without entering an API key**.
+1. **Test-First Verification:** A failing regression test is generated and proven to fail in the sandbox *before* any patch is written. That regression test ships directly inside the PR as permanent proof.
+2. **Honest Failure (Zero Hallucinated PRs):** If the pipeline cannot reliably reproduce the defect or fails the test suite within its retry budget, it **stops and reports honestly**. It will never open an unverified or speculative PR.
+3. **Safe by Design:** Code and tests execute in an isolated sandbox (`SANDBOX_MODE=docker` or `local`), disabling network access during test runs and restricting file writes strictly to the target repository.
+4. **Deterministic Replay System:** Every pipeline execution generates an immutable trace in `runs/*.json`. Users can inspect every state transition, test failure log, and unified diff locally or via the web console without requiring API keys.
 
 ---
 
 ## 🔄 Multi-Agent Architecture
 
-The resolution engine is designed as an event-driven state machine:
+The resolution engine is orchestrated as a state machine:
 
 ```mermaid
 flowchart TD
@@ -73,11 +71,11 @@ flowchart TD
 ```
 
 ### Agent Roles:
-- **Triage Agent (`openai/gpt-oss-20b`):** Reads the issue title, body, and repo file tree to identify the exact affected files and symbols. Automatically loads source code into working memory.
-- **Reproducer Agent (`openai/gpt-oss-120b`):** Authors a minimal, targeted `pytest` regression test. If the test doesn't fail on the current code, the pipeline aborts immediately (honest verification gate).
-- **Fixer Agent (`openai/gpt-oss-120b`):** Produces a surgical unified diff. It has zero ability to tamper with or modify the reproducer's test.
-- **Verifier Agent (`openai/gpt-oss-20b`):** Executes the patch against the full test suite in the sandbox and verifies that zero regressions were introduced.
-- **PR Automator:** Commits the regression test + the fix, pushes to a unique branch, and opens a GitHub PR with root cause, test evidence, and explanations.
+- **Triage Agent (`openai/gpt-oss-20b`):** Analyzes the issue title, body, and repository file tree to pinpoint the affected files and symbols. Automatically loads relevant source snippets into working memory.
+- **Reproducer Agent (`openai/gpt-oss-120b`):** Writes a minimal, self-contained `pytest` regression test. If this test does not fail on the current code, the pipeline aborts immediately (honest verification gate).
+- **Fixer Agent (`openai/gpt-oss-120b`):** Produces a surgical unified diff. The Fixer is strictly isolated from modifying or weakening the reproducer's test file.
+- **Verifier Agent (`openai/gpt-oss-20b`):** Applies the patch to a sandbox copy of the repo and executes the full test suite. Ensures zero regressions were introduced.
+- **PR Automator:** Bundles the regression test + source patch, creates an isolated branch, pushes to GitHub, and opens a Pull Request complete with root cause, test evidence, and diff explanations.
 
 ---
 
@@ -92,11 +90,21 @@ BUG_2_PR/
 ├── sandbox.py           # Docker/Local isolated test execution & patch applier
 ├── gh.py                # GitHub REST API client (clone, issues, PRs)
 ├── recorder.py          # Saves immutable execution traces to runs/
-├── dashboard.py         # Streamlit visual UI with Replay Mode (P3)
+├── smoke_test.py        # Module-level integration smoke test suite
+├── test_pipeline_e2e.py # End-to-end simulation unit tests
 ├── Dockerfile           # Minimal Python sandbox container
-├── demo_repo/           # Seeded bug testbed (pagination & pricing bugs)
-├── runs/                # Real historical run records for judge replay
-└── requirements.txt     # Unified project dependencies
+├── demo_repo/           # Seeded bug testbed (pagination & pricing defects)
+│   ├── api/
+│   │   └── pagination.py
+│   ├── ecommerce/
+│   │   └── pricing.py
+│   └── tests/
+│       ├── test_pagination.py
+│       └── test_pricing.py
+├── runs/                # Immutable execution run records
+├── requirements.txt     # Project dependencies
+├── .env.example         # Environment variables template
+└── .gitignore           # Git ignore definitions
 ```
 
 ---
@@ -119,7 +127,7 @@ Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Fill in your credentials:
+Configure your credentials:
 ```ini
 GROQ_API_KEY=gsk_your_groq_api_key
 GITHUB_TOKEN=ghp_your_github_personal_access_token
@@ -130,12 +138,12 @@ SANDBOX_MODE=local   # or 'docker' for containerized runs
 
 ## 💻 Running the Autonomous Agent
 
-Resolve any GitHub issue with a single command:
+Trigger the end-to-end resolution pipeline for any GitHub issue:
 ```bash
 python main.py https://github.com/Trident1211/Demo-buggy-repo/issues/1
 ```
 
-**Terminal Output:**
+**Terminal Execution Trace:**
 ```text
 ============================================================
   [Bug-to-PR Agent] Autonomous Bug Resolution
@@ -161,26 +169,13 @@ python main.py https://github.com/Trident1211/Demo-buggy-repo/issues/1
 
 ---
 
-## 🖥️ Streamlit Dashboard & Judge Replay Mode
+## 🌐 Web Console & Replay System
 
-Judges can inspect real recorded runs without an API key using our interactive Streamlit dashboard:
+The system exports full execution traces as structured JSON artifacts into `runs/`. These records power our web console:
 
-```bash
-streamlit run dashboard.py
-```
-
-- **Replay Selector:** Pick any run from the `runs/` folder.
-- **Stage Visualizer:** Inspect Triage, Reproducer code, Unified Diff, and Pytest logs.
-- **One-Click PR Link:** Jump directly to the verified PR on GitHub.
-
----
-
-## 👥 Team & Responsibilities
-
-- **P1 (Agent Brain):** Multi-agent state machine, model routing, system prompt contracts (`graph.py`, `llm.py`, `prompts.py`).
-- **P2 (Infra / GitHub / Sandbox):** Docker sandbox, diff application, GitHub REST client, run recorder (`sandbox.py`, `gh.py`, `main.py`, `recorder.py`).
-- **P3 (Dashboard / Replay):** Streamlit UI, stage timeline stepper, judge replay viewer (`dashboard.py`).
-- **P4 (Evaluation / Content):** Benchmark testbed, seeded bugs, evaluation metrics, documentation, and submission video.
+- **Interactive Timeline:** Step-by-step visibility through Triage, Reproducer, Fixer, and Verifier stages.
+- **Trace Inspector:** Side-by-side inspection of generated regression tests, pytest failure traces, and unified diff patches.
+- **Zero-Dependency Exploration:** Historical runs can be reviewed with full fidelity without requiring live API keys or local execution environments.
 
 ---
 
