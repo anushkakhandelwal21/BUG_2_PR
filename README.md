@@ -1,6 +1,6 @@
-# 🤖 Bug2PR
+# 🤖 Bug-to-PR Agent
 
-> *"From Issue to Verified PR"*
+> *"Copilot suggests code. We ship verified fixes."*
 
 [![Autonomous Resolution](https://img.shields.io/badge/Verification-Test--First-brightgreen.svg)](#-what-makes-us-different)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -88,6 +88,9 @@ BUG_2_PR/
 │   │   ├── bug_report.yml       # Structured bug report template
 │   │   └── feature_request.yml  # Feature enhancement proposal template
 │   └── pull_request_template.md # Standardized PR review checklist
+├── frontend/                    # React + Vite interactive Web Console
+│   ├── src/                     # UI components, pages & replay reader
+│   └── public/records/          # Synchronized execution traces for replay
 ├── demo_repo/                   # Seeded bug testbed (pagination & pricing defects)
 │   ├── api/
 │   │   └── pagination.py
@@ -98,6 +101,7 @@ BUG_2_PR/
 │       └── test_pricing.py
 ├── runs/                        # Immutable JSON execution traces for replay
 ├── main.py                      # CLI Entrypoint (python main.py <issue_url>)
+├── server.py                    # High-performance FastAPI backend server
 ├── graph.py                     # Multi-agent state machine orchestrator
 ├── llm.py                       # Groq LLM client with caching & self-repair
 ├── prompts.py                   # Structured prompts with JSON output contracts
@@ -122,13 +126,19 @@ BUG_2_PR/
 
 ### 1. Prerequisites
 - Python 3.11+
+- Node.js 18+ (for frontend console)
 - Git
 
 ### 2. Installation
 ```bash
 git clone https://github.com/anushkakhandelwal21/BUG_2_PR.git
 cd BUG_2_PR
+
+# Install backend dependencies
 pip install -r requirements.txt
+
+# Install frontend dependencies
+cd frontend && npm install && cd ..
 ```
 
 ### 3. Environment Setup
@@ -147,6 +157,7 @@ SANDBOX_MODE=local   # or 'docker' for containerized runs
 
 ## 💻 Running the Autonomous Agent
 
+### CLI Mode
 Trigger the end-to-end resolution pipeline for any GitHub issue:
 ```bash
 python main.py https://github.com/Trident1211/Demo-buggy-repo/issues/1
@@ -178,45 +189,30 @@ python main.py https://github.com/Trident1211/Demo-buggy-repo/issues/1
 
 ---
 
-## 🖥️ Bug2PR Web Application & Workspace
+## 🌐 Running the Full System (Web Console + FastAPI)
 
-Bug2PR features a unified, editorial engineering frontend with the restored near-black & emerald design, live issue resolution workspace, test evidence timeline, diff viewer, and judge replay mode.
-
-### Running the Full System (Frontend + Backend)
-
-1. **Start the Backend API Server:**
+1. **Start the FastAPI Backend:**
    ```bash
    python server.py
    ```
-   *Runs at `http://127.0.0.1:8000` — serves system diagnostics, execution records from `runs/`, and triggers the autonomous pipeline.*
+   *Runs at `http://127.0.0.1:8000` (interactive API documentation at `http://127.0.0.1:8000/docs`).*
 
-2. **Start the Bug2PR Frontend:**
+2. **Start the React + Vite Frontend:**
    ```bash
    cd frontend
    npm run dev
    ```
-   *Runs at `http://localhost:5173/` — opens the restored Bug2PR landing page (`/`) with the verification trace panel, and the primary integrated workspace at `/dashboard`.*
-
-### Judge Replay Mode
-Judges can inspect real recorded runs without an API key:
-- Navigate to `http://localhost:5173/replay` or select any historical run in the workspace.
-- **Stage Visualizer:** Inspect Triage, Reproducer code, Unified Diff, and Pytest logs directly from genuine backend execution traces.
-- **One-Click PR Link:** Jump directly to the verified PR on GitHub when a verified pull request exists.
-
-### Legacy Streamlit CLI Utility
-The underlying backend also retains `dashboard.py` for headless or local Python-only inspection:
-```bash
-streamlit run dashboard.py
-```
+   *Runs at `http://localhost:5173/`.*
 
 ---
 
-## 👥 Team & Responsibilities
+## 🔍 Deterministic Replay Engine
 
-- **P1 (Agent Brain):** Multi-agent state machine, model routing, system prompt contracts (`graph.py`, `llm.py`, `prompts.py`).
-- **P2 (Infra / GitHub / Sandbox):** Docker sandbox, diff application, GitHub REST client, run recorder (`sandbox.py`, `gh.py`, `main.py`, `recorder.py`).
-- **P3 (Dashboard / Replay):** Streamlit UI, stage timeline stepper, judge replay viewer (`dashboard.py`).
-- **P4 (Evaluation / Content):** Benchmark testbed, seeded bugs, evaluation metrics, documentation, and submission video.
+The web console includes an offline **Replay Engine** powered by pre-compiled immutable execution traces (`runs/*.json`):
+
+- **Interactive Timeline:** Step-by-step visibility through Triage, Reproducer, Fixer, and Verifier stages.
+- **Trace Inspector:** Side-by-side inspection of generated regression tests, pytest failure traces, and unified diff patches.
+- **Zero-Dependency Exploration:** Review historical runs with full fidelity without requiring live API keys or local execution environments.
 
 ---
 
