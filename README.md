@@ -2,12 +2,15 @@
 
 > *"Copilot suggests code. We ship verified fixes."*
 
+[![Live Console](https://img.shields.io/badge/Live%20Demo-bug--2--pr--six.vercel.app-blueviolet?style=for-the-badge&logo=vercel)](https://bug-2-pr-six.vercel.app/)
 [![Autonomous Resolution](https://img.shields.io/badge/Verification-Test--First-brightgreen.svg)](#-what-makes-us-different)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-blue.svg)](https://www.python.org/)
 [![LLM: Groq](https://img.shields.io/badge/LLM-Groq%20Llama%203.3%20%2F%20GPT--OSS-orange.svg)](https://groq.com/)
 
 An autonomous multi-agent software engineering system that ingests a **GitHub Issue URL** and outputs a **fully verified Pull Request**—guaranteed by an automated regression test authored and proven *before* the fix is written.
+
+👉 **Explore the Live Web Console & Replay Engine:** [https://bug-2-pr-six.vercel.app/](https://bug-2-pr-six.vercel.app/)
 
 ---
 
